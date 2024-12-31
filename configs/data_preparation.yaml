@@ -1,0 +1,20 @@
+dataset: mimiciii
+task: data_preparation
+seed: 0
+
+train_proportion: 0.8
+val_proportion: 0.1
+test_proportion: 0.1
+
+dataset_max_hours: 240
+hours_threshold_low: 48
+hours_threshold_high: 240
+age_threshold_low: 18
+age_threshold_high: 70
+max_consec_nan: 3
+interpolate_method: cubic
+window_size: 48
+window_increment: 12
+
+raw_data_path: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/data/raw
+processed_data_path: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/data/processed

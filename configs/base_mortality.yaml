@@ -1,0 +1,64 @@
+dataset: mimiciii
+task: mortality_prediction
+seed: 0
+
+train_batch_size: 128
+val_batch_size: 128
+test_batch_size: 128
+max_epoch: 300
+early_stopping_threshold: 40
+early_stopping_indicator: AUPRC
+bootstrap_num: 100
+logging_freq: 50
+val_freq: 1
+
+static_feats_num: 49
+intervention_feats_num: 14
+vital_feats_num: 3
+window_size: 48
+
+model:
+  name: ItHealth
+  mode: train
+  args:
+scoring_hidden_dim: 64
+k_coeffs: 4
+static_hidden_sizes: [32, 64]
+dynamic_hidden_dim: 64
+dynamic_layers: 3
+fuse_dim: 64
+predictor_hidden_sizes: [32, 16]
+activation: relu
+dropout: 0.1
+softmax_temp: 0.5
+
+optimizer:
+  name: Adam
+  args:
+lr: 0.0005
+
+scheduler:
+  name: ExpLR
+  args:
+gamma: 0.995
+
+criterion:
+  binary_entropy:
+    reduction: mean
+
+val_metrics:
+  AUPRC:
+    args: None
+
+test_metrics:
+  AUROC:
+    args: None
+  AUPRC:
+    args: None
+  F1:
+    args: None
+  Accuracy:
+    args: None
+
+processed_data_path: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/data/processed
+log_data_apth: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/logs

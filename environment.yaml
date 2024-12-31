@@ -1,0 +1,16 @@
+name: MedTIME
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - pandas
+  - pytables
+  - matplotlib
+  - scikit-learn
+  - pytorch
+  - pip:
+      - PyYAML
+      - tqdm
+      - mlflow

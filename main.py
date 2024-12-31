@@ -1,3 +1,4 @@
+import os.path as osp
 import time
 import random
 import logging
@@ -10,13 +11,13 @@ import mlflow
 from mlflow.tracking import MlflowClient
 
 from dataset.dataset import MIMICBaseDataset
-from dataloader.dataloader import DataLoader
+from torch.utils.data import DataLoader
 from model.model import MODELS
 from trainer.optimizer import OPTIMIZERS
 from trainer.scheduler import SCHEDULERS
 from trainer.criterion import CRITERIONS
 from metrics.metrics import METRICS
-from utils.misc import init_logger, save_params, save_embed, save_prototype
+from utils.misc import init_logger, save_params
 from utils.args import get_args
 from utils.utils import *
 
@@ -32,7 +33,29 @@ def seed_everything(seed: int):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-    # torch.use_deterministic_algorithms(True)
+    torch.use_deterministic_algorithms(True)
+
+
+def load_all(processed_data_path: str, dataset_name: str):
+    processed_data_path = osp.join(processed_data_path, dataset_name)
+
+    train_dataset = read_pickle_file(processed_data_path, f'{dataset_name}_train_data.pickle')
+    val_dataset = read_pickle_file(processed_data_path, f'{dataset_name}_val_data.pickle')
+    test_dataset = read_pickle_file(processed_data_path, f'{dataset_name}_test_data.pickle')
+
+    return {
+        'train_dataset': train_dataset,
+        'val_dataset': val_dataset,
+        'test_dataset': test_dataset,
+    }
+
+
+def get_out_dim(task: str):
+    if task == 'mortality_prediction':
+        return 1
+
+    elif task == 'los_prediction':
+        return 8
 
 
 def main(args):
@@ -40,40 +63,26 @@ def main(args):
     logger.info(f'Process begins...')
     logger.info(f'Dataset: {args.dataset}')
     logger.info(f'Task: {args.task}')
-    logger.info(f'Triplet method: {args.triplet_method}')
     logger.info(f'Model: {args.model["name"]}')
 
     seed_everything(args.seed)
 
-    file_lib = load_all(args.processed_data_path, args.dataset, args.triplet_method, args.task)
-    prescriptions_maps = format_code_map(file_lib['prescriptions_map'])
+    file_lib = load_all(args.processed_data_path, args.dataset)
     train_dataset = file_lib['train_dataset']
     val_dataset = file_lib['val_dataset']
     test_dataset = file_lib['test_dataset']
     logger.info('Completed file loading')
 
-    train_dataset = MIMICBaseDataset(patients=train_dataset,
-                                     task=args.task,
-                                     graph=file_lib['full_graph'],
-                                     prescriptions_code_to_name=prescriptions_maps[0],
-                                     phenotype_names=file_lib['phenotype_names'])
-    val_dataset = MIMICBaseDataset(patients=val_dataset,
-                                   task=args.task,
-                                   graph=file_lib['full_graph'],
-                                   prescriptions_code_to_name=prescriptions_maps[0],
-                                   phenotype_names=file_lib['phenotype_names'])
+    train_dataset = MIMICBaseDataset(data=train_dataset,
+                                     task=args.task)
+    val_dataset = MIMICBaseDataset(data=val_dataset,
+                                   task=args.task)
     logger.info('Dataset ready')
 
     train_loader = DataLoader(dataset=train_dataset,
-                              graph=file_lib['full_graph'],
-                              model_name=args.model['name'],
-                              task=args.task,
                               batch_size=args.train_batch_size,
                               shuffle=True)
     val_loader = DataLoader(dataset=val_dataset,
-                            graph=file_lib['full_graph'],
-                            model_name=args.model['name'],
-                            task=args.task,
                             batch_size=args.val_batch_size,
                             shuffle=False)
     
@@ -86,41 +95,28 @@ def main(args):
         sample_keys = test_keys[sample_indices]
 
         sub_test_dataset = {sample_pos: test_dataset[key] for sample_pos, key in enumerate(sample_keys)}
-        sub_test_dataset = MIMICBaseDataset(patients=sub_test_dataset,
-                                   task=args.task,
-                                   graph=file_lib['full_graph'],
-                                   prescriptions_code_to_name=prescriptions_maps[0],
-                                   phenotype_names=file_lib['phenotype_names'])
+        sub_test_dataset = MIMICBaseDataset(data=sub_test_dataset,
+                                   task=args.task)
 
         sub_test_loader = DataLoader(dataset=sub_test_dataset,
-                                graph=file_lib['full_graph'],
-                                model_name=args.model['name'],
-                                task=args.task,
                                 batch_size=args.test_batch_size,
                                 shuffle=False)
         
         all_test_loader.append(sub_test_loader)
     logger.info('Dataloader ready')
 
-    out_dim = task_configuring_model(args.task, prescriptions_maps[0])
+    out_dim = get_out_dim(args.task)
 
     global_iter_idx = [0]
     start_epoch = 0
 
     model_configs = args.model['args'] | {
         'device': device,
-        'num_nodes': len(file_lib['node_id_to_name']),
-        'num_edges': len(file_lib['triplet_id_to_info']),
-        'visit_thresh': args.visit_thresh,
-        'visit_code_num': args.code_thresh,
+        'static_feats_num': args.static_feats_num,
+        'intervention_feats_num': args.intervention_feats_num,
+        'vital_feats_num': args.vital_feats_num,
+        'window_size': args.window_size,
         'out_dim': out_dim,
-        'graph': file_lib['full_graph']['graph'],
-        'global_node_attr': file_lib['full_graph']['h'],
-        'global_edge_attr': file_lib['full_graph']['edge_attr'],
-        'global_edge_index': file_lib['full_graph']['edge_index'],
-        'global_edge_ids': file_lib['full_graph']['edge_ids'],
-        'global_edge_type': file_lib['full_graph']['type'],
-        'global_edge_norm': file_lib['full_graph']['norm'],
     }
     model = MODELS[args.model['name']](model_configs)
     model.to(device)
@@ -142,7 +138,7 @@ def main(args):
         EXP_ID = experiments.experiment_id
 
     with mlflow.start_run(experiment_id=EXP_ID,
-                          run_name=f'{args.dataset}_{args.task}_{args.model["name"]}_{args.model["mode"]}_{args.start_time}_pr1.0'):
+                          run_name=f'{args.dataset}_{args.task}_{args.model["name"]}_{args.model["mode"]}_{args.start_time}'):
         mlflow.log_params(vars(args))
         model_param_num = sum(p.numel() for p in model.parameters())
         model_size = sum(p.numel() * p.element_size() for p in model.parameters()) / 1e6
@@ -156,8 +152,13 @@ def main(args):
             bootstrap_test_results = {}
             bootstrap_test_result_stats = {}
             for metric_name in args.test_metrics:
-                bootstrap_test_results[metric_name] = []
-                bootstrap_test_result_stats['bootstrap_test_stats_' + metric_name] = {'mean': None, 'std': None, 'num': None}
+                if '_K' in metric_name:
+                    for k in args.test_metrics[metric_name]['K']:
+                        bootstrap_test_results[f'{metric_name}_{k}'] = []
+                        bootstrap_test_result_stats['bootstrap_test_stats_' + f'{metric_name}_{k}'] = {'mean': None, 'std': None, 'num': None}
+                else:
+                    bootstrap_test_results[metric_name] = []
+                    bootstrap_test_result_stats['bootstrap_test_stats_' + metric_name] = {'mean': None, 'std': None, 'num': None}
 
             for epoch_idx in range(start_epoch, args.max_epoch):
                 single_train(
@@ -210,12 +211,14 @@ def main(args):
                     args.task,
                     test_loader,
                     bootstrap_idx,
+                    bootstrap_idx,
+                    criterions=[CRITERIONS[criterion](**args.criterion[criterion]) for criterion in args.criterion],
                     metrics=[
                         METRICS[metric](args.task, **args.test_metrics[metric]) for metric in args.test_metrics
                     ])
                 
                 for name, result in test_results.items():
-                    bootstrap_test_results[name].append(result.item())
+                    bootstrap_test_results[name].append(float(result))
 
             if early_stopping_counter >= args.early_stopping_threshold:
                 logger.info(f'Early stopping triggered, best epoch: {best_epoch}')
@@ -239,6 +242,7 @@ def main(args):
                                             args.model['name'])
                 save_with_pickle(bootstrap_test_results, bootstrap_results_path, f'{args.dataset}_{args.task}_{args.model["name"]}_bootstrap_results_{args.start_time}.pickle')
                 save_with_pickle(bootstrap_test_result_stats, bootstrap_results_path, f'{args.dataset}_{args.task}_{args.model["name"]}_bootstrap_result_stats_{args.start_time}.pickle')
+                logger.info('Bootstrap results saved')
 
             if args.save_params:
                 save_params(model=best_model,
@@ -247,6 +251,7 @@ def main(args):
                             iter_idx=best_iter,
                             optimizer=best_optimizer,
                             scheduler=best_scheduler)
+                logger.info('Model saved')
 
             logger.info('Process completed')
 
@@ -256,6 +261,8 @@ def main(args):
                     args.task,
                     test_loader,
                     epoch_idx,
+                    global_iter_idx,
+                    criterions=[CRITERIONS[criterion](**args.criterion[criterion]) for criterion in args.criterion],
                     metrics=[
                         METRICS[metric](args.task, **args.test_metrics[metric]) for metric in args.test_metrics
                     ])
@@ -271,7 +278,6 @@ def single_train(model,
                  metrics=[],
                  scheduler=None,
                  logging_freq=10):
-
     train_start_time = time.time()
     model.train()
     epoch_loss = []
@@ -279,43 +285,36 @@ def single_train(model,
     target_all = []
 
     for idx, data in enumerate(dataloader):
-        data = data.to(device)
+        x_static = data['static']
+        x_dynamic = data['dynamic']
+        fourier_coeffs = data['fourier_coeffs']
+        labels = data['label']
+        x_static = x_static.to(device)
+        x_dynamic = x_dynamic.to(device)
+        fourier_coeffs = fourier_coeffs.to(device)
+        labels = labels.to(device)
+
         optimizer.zero_grad()
 
-        additional_data = {
-            'cat_node_ids': data.cat_node_ids,
-            'cat_edge_ids': data.cat_edge_ids,
-            'cat_edge_index': data.cat_edge_index,
-            'visit_nodes': data.visit_nodes,
-            'visit_node_type': data.visit_node_type,
-            'ehr_nodes': data.ehr_nodes,
-            'batch': data.batch,
-        }
-
-        output = model(node_ids=data.visit_node_ids,
-                       edge_idx=data.global_edge_index,
-                       edge_attr=data.global_edge_attr,
-                       visit_times=data.visit_rel_times,
-                       attn_mask=data.attn_mask,
-                       **additional_data)
+        output = model(x_static=x_static,
+                       x_dynamic=x_dynamic,
+                       fourier_coeffs=fourier_coeffs)
 
         out = output['logits']
-        prototypes = output['prototypes']
+        reconstructed_vitals = output['reconstructed_vitals']
 
         loss = 0.
-        labels = data.labels
-
         for criterion in criterions:
-            loss += criterion(out[0], labels)
+            loss += criterion(out, labels)
 
         epoch_loss.append(loss.item())
         loss.backward()
         optimizer.step()
 
         if task == 'los_prediction':
-            probability = F.softmax(out[0], dim=-1)
+            probability = F.softmax(out, dim=-1)
         else:
-            probability = torch.sigmoid(out[0])
+            probability = torch.sigmoid(out)
 
         prob_all.append(probability.cpu().detach())
         target_all.append(labels.cpu().detach())
@@ -343,53 +342,48 @@ def single_train(model,
     target_all = np.concatenate(target_all, axis=0)
 
     for metric in metrics:
-        score = metric.calculate(prob_all, target_all)       
-        mlflow.log_metric(key=f'train_{metric.NAME}', value=score, step=epoch_idx)
+        score = metric.calculate(prob_all, target_all)
+        if isinstance(score, list):
+            for idx, s in enumerate(score):
+                mlflow.log_metric(key=f'train_{metric.NAME}_{metric.K[idx]}', value=s, step=epoch_idx)
+        else:
+            mlflow.log_metric(key=f'train_{metric.NAME}', value=score, step=epoch_idx)
 
 
 def single_validate(model, task, dataloader, epoch_idx, global_iter_idx, criterions=[], metrics=[]):
-
     model.eval()
     epoch_loss = []
     prob_all = []
     target_all = []
 
     for _, data in enumerate(tqdm(dataloader)):
-        data = data.to(device)
+        x_static = data['static']
+        x_dynamic = data['dynamic']
+        fourier_coeffs = data['fourier_coeffs']
+        labels = data['label']
+        x_static = x_static.to(device)
+        x_dynamic = x_dynamic.to(device)
+        fourier_coeffs = fourier_coeffs.to(device)
+        labels = labels.to(device)
 
         with torch.no_grad():
-            additional_data = {
-                'cat_node_ids': data.cat_node_ids,
-                'cat_edge_ids': data.cat_edge_ids,
-                'cat_edge_index': data.cat_edge_index,
-                'visit_nodes': data.visit_nodes,
-                'visit_node_type': data.visit_node_type,
-                'ehr_nodes': data.ehr_nodes,
-                'batch': data.batch,
-            }
-
-            output = model(node_ids=data.visit_node_ids,
-                           edge_idx=data.global_edge_index,
-                           edge_attr=data.global_edge_attr,
-                           visit_times=data.visit_rel_times,
-                           attn_mask=data.attn_mask,
-                           **additional_data)
+            output = model(x_static=x_static,
+                       x_dynamic=x_dynamic,
+                       fourier_coeffs=fourier_coeffs)
 
             out = output['logits']
-            prototypes = output['prototypes']
+            reconstructed_vitals = output['reconstructed_vitals']
 
             loss = 0.
-            labels = data.labels
-
             for criterion in criterions:
-                loss += criterion(out[0], labels)
+                loss += criterion(out, labels)
 
             epoch_loss.append(loss.item())
 
             if task == 'los_prediction':
-                probability = F.softmax(out[0], dim=-1)
+                probability = F.softmax(out, dim=-1)
             else:
-                probability = torch.sigmoid(out[0])
+                probability = torch.sigmoid(out)
 
             prob_all.append(probability.cpu())
             target_all.append(labels.cpu())
@@ -405,85 +399,72 @@ def single_validate(model, task, dataloader, epoch_idx, global_iter_idx, criteri
 
     for metric in metrics:
         score = metric.calculate(prob_all, target_all)
-        mlflow.log_metric(key=f'val_{metric.NAME}', value=score, step=epoch_idx)
-        results[metric.NAME] = score
+        if isinstance(score, list):
+            for idx, s in enumerate(score):
+                mlflow.log_metric(key=f'val_{metric.NAME}_{metric.K[idx]}', value=s, step=epoch_idx)
+                results[f'{metric.NAME}_{metric.K[idx]}'] = s
+        else:
+            mlflow.log_metric(key=f'val_{metric.NAME}', value=score, step=epoch_idx)
+            results[metric.NAME] = score
 
     return results
 
 
-def single_test(model, task, dataloader, epoch_idx, metrics=[]):
+def single_test(model, task, dataloader, epoch_idx, global_iter_idx, criterions=[], metrics=[]):
     model.eval()
+    epoch_loss = []
     prob_all = []
     target_all = []
 
     for _, data in enumerate(tqdm(dataloader)):
-        data = data.to(device)
+        x_static = data['static']
+        x_dynamic = data['dynamic']
+        fourier_coeffs = data['fourier_coeffs']
+        labels = data['label']
+        x_static = x_static.to(device)
+        x_dynamic = x_dynamic.to(device)
+        fourier_coeffs = fourier_coeffs.to(device)
+        labels = labels.to(device)
 
         with torch.no_grad():
-            additional_data = {
-                'cat_node_ids': data.cat_node_ids,
-                'cat_edge_ids': data.cat_edge_ids,
-                'cat_edge_index': data.cat_edge_index,
-                'visit_nodes': data.visit_nodes,
-                'visit_node_type': data.visit_node_type,
-                'ehr_nodes': data.ehr_nodes,
-                'batch': data.batch,
-            }
-
-            output = model(node_ids=data.visit_node_ids,
-                           edge_idx=data.global_edge_index,
-                           edge_attr=data.global_edge_attr,
-                           visit_times=data.visit_rel_times,
-                           attn_mask=data.attn_mask,
-                           **additional_data)
+            output = model(x_static=x_static,
+                       x_dynamic=x_dynamic,
+                       fourier_coeffs=fourier_coeffs)
 
             out = output['logits']
-            embeddings = output['embeddings']
+            reconstructed_vitals = output['reconstructed_vitals']
 
-            if task == 'pretrain':
-                labels_1 = data.trans_label
-                labels_2 = data.gru_label
+            loss = 0.
+            for criterion in criterions:
+                loss += criterion(out, labels)
 
-                visit_mask = data.attn_mask.all(dim=-1)
-                visit_mask = ~visit_mask
-                visit_mask = visit_mask.unsqueeze(-1).expand(-1, -1, labels_1.size(-1))
-
-                labels_1 = labels_1[visit_mask].view(-1, labels_1.size(-1))
-
-                metric_out = out[1]
-                metric_labels = labels_2
-
-            elif task == 'get_prototypes':
-                metric_out = out[1]
-                metric_labels = data.labels
-
-            else:
-                labels = data.labels
-
-                metric_out = out[0]
-                metric_labels = labels
+            epoch_loss.append(loss.item())
 
             if task == 'los_prediction':
-                probability = F.softmax(metric_out, dim=-1)
+                probability = F.softmax(out, dim=-1)
             else:
-                probability = torch.sigmoid(metric_out)
+                probability = torch.sigmoid(out)
 
             prob_all.append(probability.cpu())
-            target_all.append(metric_labels.cpu())
+            target_all.append(labels.cpu())
 
     results = {}
 
-    if task != 'get_prototypes':
-        prob_all = np.concatenate(prob_all, axis=0)
-        target_all = np.concatenate(target_all, axis=0)
+    epoch_loss_avg = np.mean(epoch_loss)
+    logger.info(f"Epoch: {epoch_idx:4d},  [{global_iter_idx:5d}], Epoch Loss: {epoch_loss_avg}")
+    mlflow.log_metric(key='test_epoch_loss', value=epoch_loss_avg, step=epoch_idx)
 
-        for metric in metrics:
-            score = metric.calculate(prob_all, target_all)
-            if isinstance(score, list):
-                for idx, s in enumerate(score):
-                    mlflow.log_metric(key=f'test_{metric.NAME}_{metric.K[idx]}', value=s, step=epoch_idx)
-            else:
-                mlflow.log_metric(key=f'test_{metric.NAME}', value=score, step=epoch_idx)
+    prob_all = np.concatenate(prob_all, axis=0)
+    target_all = np.concatenate(target_all, axis=0)
+
+    for metric in metrics:
+        score = metric.calculate(prob_all, target_all)
+        if isinstance(score, list):
+            for idx, s in enumerate(score):
+                mlflow.log_metric(key=f'test_{metric.NAME}_{metric.K[idx]}', value=s, step=epoch_idx)
+                results[f'{metric.NAME}_{metric.K[idx]}'] = s
+        else:
+            mlflow.log_metric(key=f'test_{metric.NAME}', value=score, step=epoch_idx)
             results[metric.NAME] = score
 
     return results
