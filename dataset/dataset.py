@@ -3,9 +3,8 @@ from torch.utils import data
 
 
 class MIMICBaseDataset(data.Dataset):
-    def __init__(self,
-                 data: dict,
-                 task: str):
+
+    def __init__(self, data: dict, task: str):
 
         self.task = task
         self.dataset = self.extract_data(data)

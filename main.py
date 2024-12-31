@@ -73,19 +73,13 @@ def main(args):
     test_dataset = file_lib['test_dataset']
     logger.info('Completed file loading')
 
-    train_dataset = MIMICBaseDataset(data=train_dataset,
-                                     task=args.task)
-    val_dataset = MIMICBaseDataset(data=val_dataset,
-                                   task=args.task)
+    train_dataset = MIMICBaseDataset(data=train_dataset, task=args.task)
+    val_dataset = MIMICBaseDataset(data=val_dataset, task=args.task)
     logger.info('Dataset ready')
 
-    train_loader = DataLoader(dataset=train_dataset,
-                              batch_size=args.train_batch_size,
-                              shuffle=True)
-    val_loader = DataLoader(dataset=val_dataset,
-                            batch_size=args.val_batch_size,
-                            shuffle=False)
-    
+    train_loader = DataLoader(dataset=train_dataset, batch_size=args.train_batch_size, shuffle=True)
+    val_loader = DataLoader(dataset=val_dataset, batch_size=args.val_batch_size, shuffle=False)
+
     all_test_loader = []
     test_keys = np.array(list(test_dataset.keys()))
     for idx in range(args.bootstrap_num):
@@ -95,13 +89,10 @@ def main(args):
         sample_keys = test_keys[sample_indices]
 
         sub_test_dataset = {sample_pos: test_dataset[key] for sample_pos, key in enumerate(sample_keys)}
-        sub_test_dataset = MIMICBaseDataset(data=sub_test_dataset,
-                                   task=args.task)
+        sub_test_dataset = MIMICBaseDataset(data=sub_test_dataset, task=args.task)
 
-        sub_test_loader = DataLoader(dataset=sub_test_dataset,
-                                batch_size=args.test_batch_size,
-                                shuffle=False)
-        
+        sub_test_loader = DataLoader(dataset=sub_test_dataset, batch_size=args.test_batch_size, shuffle=False)
+
         all_test_loader.append(sub_test_loader)
     logger.info('Dataloader ready')
 
@@ -129,7 +120,8 @@ def main(args):
     logger.info('Optimizer and Scheduler ready')
 
     experiment_name = f'Experiments_{args.model["name"]}'
-    mlflow.set_tracking_uri(osp.join(args.log_path, 'mlflow'))
+    mlflow_path = osp.join(args.log_path, 'mlflow')
+    mlflow.set_tracking_uri(mlflow_path)
     client = MlflowClient()
     try:
         EXP_ID = client.create_experiment(experiment_name)
@@ -137,8 +129,9 @@ def main(args):
         experiments = client.get_experiment_by_name(experiment_name)
         EXP_ID = experiments.experiment_id
 
-    with mlflow.start_run(experiment_id=EXP_ID,
-                          run_name=f'{args.dataset}_{args.task}_{args.model["name"]}_{args.model["mode"]}_{args.start_time}'):
+    with mlflow.start_run(
+            experiment_id=EXP_ID,
+            run_name=f'{args.dataset}_{args.task}_{args.model["name"]}_{args.model["mode"]}_{args.start_time}'):
         mlflow.log_params(vars(args))
         model_param_num = sum(p.numel() for p in model.parameters())
         model_size = sum(p.numel() * p.element_size() for p in model.parameters()) / 1e6
@@ -155,10 +148,18 @@ def main(args):
                 if '_K' in metric_name:
                     for k in args.test_metrics[metric_name]['K']:
                         bootstrap_test_results[f'{metric_name}_{k}'] = []
-                        bootstrap_test_result_stats['bootstrap_test_stats_' + f'{metric_name}_{k}'] = {'mean': None, 'std': None, 'num': None}
+                        bootstrap_test_result_stats['bootstrap_test_stats_' + f'{metric_name}_{k}'] = {
+                            'mean': None,
+                            'std': None,
+                            'num': None
+                        }
                 else:
                     bootstrap_test_results[metric_name] = []
-                    bootstrap_test_result_stats['bootstrap_test_stats_' + metric_name] = {'mean': None, 'std': None, 'num': None}
+                    bootstrap_test_result_stats['bootstrap_test_stats_' + metric_name] = {
+                        'mean': None,
+                        'std': None,
+                        'num': None
+                    }
 
             for epoch_idx in range(start_epoch, args.max_epoch):
                 single_train(
@@ -213,10 +214,8 @@ def main(args):
                     bootstrap_idx,
                     bootstrap_idx,
                     criterions=[CRITERIONS[criterion](**args.criterion[criterion]) for criterion in args.criterion],
-                    metrics=[
-                        METRICS[metric](args.task, **args.test_metrics[metric]) for metric in args.test_metrics
-                    ])
-                
+                    metrics=[METRICS[metric](args.task, **args.test_metrics[metric]) for metric in args.test_metrics])
+
                 for name, result in test_results.items():
                     bootstrap_test_results[name].append(float(result))
 
@@ -226,7 +225,7 @@ def main(args):
                 logger.info(f'Max epoch reached, best epoch: {best_epoch}')
 
             for metric_name, bootstrap_vals in bootstrap_test_results.items():
-                bootstrap_vals = 100*np.array(bootstrap_vals)
+                bootstrap_vals = 100 * np.array(bootstrap_vals)
                 mean = np.round(np.mean(bootstrap_vals), decimals=1)
                 std = np.round(np.std(bootstrap_vals), decimals=1)
                 num = len(bootstrap_vals)
@@ -239,9 +238,13 @@ def main(args):
 
             if args.save_test:
                 bootstrap_results_path = osp.join(args.log_path, 'bootstrap_results', args.dataset, args.task,
-                                            args.model['name'])
-                save_with_pickle(bootstrap_test_results, bootstrap_results_path, f'{args.dataset}_{args.task}_{args.model["name"]}_bootstrap_results_{args.start_time}.pickle')
-                save_with_pickle(bootstrap_test_result_stats, bootstrap_results_path, f'{args.dataset}_{args.task}_{args.model["name"]}_bootstrap_result_stats_{args.start_time}.pickle')
+                                                  args.model['name'])
+                save_with_pickle(
+                    bootstrap_test_results, bootstrap_results_path,
+                    f'{args.dataset}_{args.task}_{args.model["name"]}_bootstrap_results_{args.start_time}.pickle')
+                save_with_pickle(
+                    bootstrap_test_result_stats, bootstrap_results_path,
+                    f'{args.dataset}_{args.task}_{args.model["name"]}_bootstrap_result_stats_{args.start_time}.pickle')
                 logger.info('Bootstrap results saved')
 
             if args.save_params:
@@ -252,20 +255,17 @@ def main(args):
                             optimizer=best_optimizer,
                             scheduler=best_scheduler)
                 logger.info('Model saved')
-
             logger.info('Process completed')
 
         elif args.model['mode'] == 'inference':
             test_results = single_test(
-                    model,
-                    args.task,
-                    test_loader,
-                    epoch_idx,
-                    global_iter_idx,
-                    criterions=[CRITERIONS[criterion](**args.criterion[criterion]) for criterion in args.criterion],
-                    metrics=[
-                        METRICS[metric](args.task, **args.test_metrics[metric]) for metric in args.test_metrics
-                    ])
+                model,
+                args.task,
+                test_loader,
+                epoch_idx,
+                global_iter_idx,
+                criterions=[CRITERIONS[criterion](**args.criterion[criterion]) for criterion in args.criterion],
+                metrics=[METRICS[metric](args.task, **args.test_metrics[metric]) for metric in args.test_metrics])
 
 
 def single_train(model,
@@ -296,9 +296,7 @@ def single_train(model,
 
         optimizer.zero_grad()
 
-        output = model(x_static=x_static,
-                       x_dynamic=x_dynamic,
-                       fourier_coeffs=fourier_coeffs)
+        output = model(x_static=x_static, x_dynamic=x_dynamic, fourier_coeffs=fourier_coeffs)
 
         out = output['logits']
         reconstructed_vitals = output['reconstructed_vitals']
@@ -331,7 +329,7 @@ def single_train(model,
         scheduler.step()
 
     epoch_loss_avg = np.mean(epoch_loss)
-    logger.info(f"Epoch: {epoch_idx:4d},  [{global_iter_idx[0]:5d}], Epoch Loss: {epoch_loss_avg}")
+    logger.info(f"Epoch: {epoch_idx:4d},  [{global_iter_idx[0]:5d}], Train Epoch Loss: {epoch_loss_avg}")
     mlflow.log_metrics({
         'train_epoch_time_seconds': time.time() - train_start_time,
         'train_epoch_loss': epoch_loss_avg
@@ -367,9 +365,7 @@ def single_validate(model, task, dataloader, epoch_idx, global_iter_idx, criteri
         labels = labels.to(device)
 
         with torch.no_grad():
-            output = model(x_static=x_static,
-                       x_dynamic=x_dynamic,
-                       fourier_coeffs=fourier_coeffs)
+            output = model(x_static=x_static, x_dynamic=x_dynamic, fourier_coeffs=fourier_coeffs)
 
             out = output['logits']
             reconstructed_vitals = output['reconstructed_vitals']
@@ -391,7 +387,7 @@ def single_validate(model, task, dataloader, epoch_idx, global_iter_idx, criteri
     results = {}
 
     epoch_loss_avg = np.mean(epoch_loss)
-    logger.info(f"Epoch: {epoch_idx:4d},  [{global_iter_idx[0]:5d}], Epoch Loss: {epoch_loss_avg}")
+    logger.info(f"Epoch: {epoch_idx:4d},  [{global_iter_idx[0]:5d}], Val Epoch Loss: {epoch_loss_avg}")
     mlflow.log_metric(key='val_epoch_loss', value=epoch_loss_avg, step=epoch_idx)
 
     prob_all = np.concatenate(prob_all, axis=0)
@@ -427,9 +423,7 @@ def single_test(model, task, dataloader, epoch_idx, global_iter_idx, criterions=
         labels = labels.to(device)
 
         with torch.no_grad():
-            output = model(x_static=x_static,
-                       x_dynamic=x_dynamic,
-                       fourier_coeffs=fourier_coeffs)
+            output = model(x_static=x_static, x_dynamic=x_dynamic, fourier_coeffs=fourier_coeffs)
 
             out = output['logits']
             reconstructed_vitals = output['reconstructed_vitals']
@@ -451,7 +445,7 @@ def single_test(model, task, dataloader, epoch_idx, global_iter_idx, criterions=
     results = {}
 
     epoch_loss_avg = np.mean(epoch_loss)
-    logger.info(f"Epoch: {epoch_idx:4d},  [{global_iter_idx:5d}], Epoch Loss: {epoch_loss_avg}")
+    logger.info(f"Epoch: {epoch_idx:4d},  [{global_iter_idx:5d}], Test Epoch Loss: {epoch_loss_avg}")
     mlflow.log_metric(key='test_epoch_loss', value=epoch_loss_avg, step=epoch_idx)
 
     prob_all = np.concatenate(prob_all, axis=0)

@@ -3,6 +3,7 @@ import torch.nn.functional as F
 
 
 class binary_entropy(nn.Module):
+
     def __init__(self, reduction='mean'):
         super().__init__()
 
@@ -15,6 +16,7 @@ class binary_entropy(nn.Module):
 
 
 class cross_entropy(nn.Module):
+
     def __init__(self, reduction='mean'):
         super().__init__()
 
@@ -27,7 +29,4 @@ class cross_entropy(nn.Module):
         return F.cross_entropy(inputs, targets, reduction=self.reduction)
 
 
-CRITERIONS = {
-    'binary_entropy': binary_entropy,
-    'cross_entropy': cross_entropy
-}
+CRITERIONS = {'binary_entropy': binary_entropy, 'cross_entropy': cross_entropy}

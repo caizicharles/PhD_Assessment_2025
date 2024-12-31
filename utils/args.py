@@ -9,10 +9,10 @@ def get_args():
     parser.add_argument('--dataset', type=str, default='mimiciii')
     parser.add_argument('--task', type=str, default='')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--triplet_ratio', type=float, default=1.0)
-    
+    parser.add_argument('--save_test', type=bool, default=False)
+    parser.add_argument('--save_params', type=bool, default=False)
+
     parser.add_argument('--processed_data_path', type=str, default='')
-    parser.add_argument('--pretrained', type=str, default='')
     parser.add_argument('--log_path', type=str, default='')
 
     optimizer_hyp_search_args = {
@@ -34,7 +34,7 @@ def get_args():
         'dropout': 0.1,
         'softmax_temp': 1.
     }
-    
+
     for hyp, default_val in optimizer_hyp_search_args.items():
         parser.add_argument(f'--{hyp}', type=type(default_val), default=default_val)
     for hyp, default_val in scheduler_hyp_search_args.items():
@@ -55,7 +55,6 @@ def get_args():
 
     args = parser.parse_args(remaining)
 
-    
     if args.task != 'data_preparation':
         for hyp in optimizer_hyp_search_args.keys():
             value = getattr(args, hyp, None)

@@ -29,6 +29,7 @@ def save_params(model, args, epoch_idx=None, iter_idx=None, optimizer=None, sche
         f'{args.log_path}/checkpoints/{args.dataset}/{args.task}/{args.model["name"]}_s{args.seed}_{args.start_time}.pth'
     )
 
+
 def get_time_str():
     return time.strftime('%Y%m%d_%H%M%S', time.localtime())
 

@@ -1,5 +1,5 @@
 dataset: mimiciii
-task: mortality_prediction
+task: los_prediction
 seed: 0
 save_test: True
 save_params: False
@@ -9,7 +9,7 @@ val_batch_size: 128
 test_batch_size: 128
 max_epoch: 300
 early_stopping_threshold: 20
-early_stopping_indicator: AUPRC
+early_stopping_indicator: AUROC
 bootstrap_num: 100
 logging_freq: 50
 val_freq: 1
@@ -44,17 +44,17 @@ scheduler:
 gamma: 0.995
 
 criterion:
-  binary_entropy:
+  cross_entropy:
     reduction: mean
 
 val_metrics:
-  AUPRC:
+  AUROC:
     args: None
 
 test_metrics:
   AUROC:
     args: None
-  AUPRC:
+  Kappa:
     args: None
   F1:
     args: None

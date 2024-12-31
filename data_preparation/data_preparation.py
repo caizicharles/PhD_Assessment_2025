@@ -38,36 +38,13 @@ def load_data(dataset_max_hours: int,
         vitals_labs_mean = pd.read_hdf(raw_data_path, 'vitals_labs_mean')
         interventions = pd.read_hdf(raw_data_path, 'interventions')
 
-        PATIENT_DEMO_KEYS = [
-            "age",
-            "ethnicity",
-            "gender",
-            "first_careunit",
-            "mort_icu",
-            "los_icu"
-        ]
+        PATIENT_DEMO_KEYS = ["age", "ethnicity", "gender", "first_careunit", "mort_icu", "los_icu"]
 
-        VITALS_LABS_KEYS = [
-            "diastolic blood pressure",
-            "mean blood pressure",
-            "heart rate"
-        ]
+        VITALS_LABS_KEYS = ["diastolic blood pressure", "mean blood pressure", "heart rate"]
 
         INTERVENTIONS_KEYS = [
-            'vent',
-            'vaso',
-            'adenosine',
-            'dobutamine',
-            'dopamine',
-            'epinephrine',
-            'isuprel',
-            'milrinone',
-            'norepinephrine',
-            'phenylephrine',
-            'vasopressin',
-            'colloid_bolus',
-            'crystalloid_bolus',
-            'nivdurations'
+            'vent', 'vaso', 'adenosine', 'dobutamine', 'dopamine', 'epinephrine', 'isuprel', 'milrinone',
+            'norepinephrine', 'phenylephrine', 'vasopressin', 'colloid_bolus', 'crystalloid_bolus', 'nivdurations'
         ]
 
         subject_ids = patient_demographics.index.get_level_values("subject_id").to_numpy()
@@ -76,7 +53,7 @@ def load_data(dataset_max_hours: int,
         patient_demographics = patient_demographics.reset_index()
         patient_demographics = patient_demographics[PATIENT_DEMO_KEYS]
         patient_demographics = patient_demographics.to_numpy(dtype=str)
-        
+
         vitals_labs_mean = vitals_labs_mean[VITALS_LABS_KEYS]
         vitals_labs_mean = vitals_labs_mean.unstack(level="hours_in").to_numpy(dtype=float)
         vitals_labs_mean = vitals_labs_mean.reshape(-1, len(VITALS_LABS_KEYS), dataset_max_hours)
@@ -98,18 +75,24 @@ def load_data(dataset_max_hours: int,
             mean_bp = vitals_labs_mean[idx][1]
             hr = vitals_labs_mean[idx][2]
 
-            raw_data[subject_id] = {'subject_id': subject_id,
-                                    'icustay_id': icu_stay_ids[idx],
-                                    'demographic': {'age': age,
-                                                    'ethnicity': ethnicity,
-                                                    'gender': gender,
-                                                    'first_careunit': first_careunit,
-                                                    'mort_icu': mort_icu,
-                                                    'los_icu': los_icu},
-                                    'vitals_labs_mean': {'diastolic_bp': diastolic_bp,
-                                                        'mean_bp': mean_bp,
-                                                        'hr': hr},
-                                    'interventions': interventions[idx]}
+            raw_data[subject_id] = {
+                'subject_id': subject_id,
+                'icustay_id': icu_stay_ids[idx],
+                'demographic': {
+                    'age': age,
+                    'ethnicity': ethnicity,
+                    'gender': gender,
+                    'first_careunit': first_careunit,
+                    'mort_icu': mort_icu,
+                    'los_icu': los_icu
+                },
+                'vitals_labs_mean': {
+                    'diastolic_bp': diastolic_bp,
+                    'mean_bp': mean_bp,
+                    'hr': hr
+                },
+                'interventions': interventions[idx]
+            }
 
     if save_data:
         save_with_pickle(raw_data, processed_data_path, f'{dataset_name}_raw_data.pickle')
@@ -126,12 +109,12 @@ def filter_data(raw_data: dict,
                 processed_data_path: str,
                 dataset_name: str,
                 save_data: bool = False):
-    
+
     def consecutive_nan_lengths(arr):
         is_nan = np.isnan(arr)
         nan_lengths = []
         current_count = 0
-        
+
         for val in is_nan:
             if val:
                 current_count += 1
@@ -142,9 +125,9 @@ def filter_data(raw_data: dict,
 
         if current_count > 0:
             nan_lengths.append(current_count)
-        
+
         return nan_lengths
-    
+
     filtered_data = deepcopy(raw_data)
 
     for subject_id, data in tqdm(raw_data.items(), desc='Filtering data'):
@@ -165,7 +148,7 @@ def filter_data(raw_data: dict,
             else:
                 max_intermit_nan.append(0)
             valid_length.append(len(time_series) - consec_nan[-1])
-        
+
         if min(valid_length) > hours_threshold_high or min(valid_length) < hours_threshold_low:
             del filtered_data[subject_id]
             continue
@@ -185,25 +168,25 @@ def impute_by_interpolate(filtered_data: dict,
                           processed_data_path: str,
                           dataset_name: str,
                           save_data: bool = False):
-    
+
     def count_trailing_nans(arr):
         reversed_arr = arr[::-1]
         count = 0
-        
+
         for val in reversed_arr:
             if np.isnan(val):
                 count += 1
             else:
                 break
         return count
-    
+
     def interpolate_time_series(data, interpolate_method='linear'):
         nans = np.isnan(data)
         t = np.arange(len(data))
         f = interpolate.interp1d(t[~nans], data[~nans], kind=interpolate_method, fill_value='extrapolate')
         data[nans] = f(t[nans])
         return data
-    
+
     for subject_id, data in tqdm(filtered_data.items(), desc='Imputing data'):
         subject_time_series = data['vitals_labs_mean']
 
@@ -221,7 +204,7 @@ def impute_by_interpolate(filtered_data: dict,
 
     if save_data:
         save_with_pickle(filtered_data, processed_data_path, f'{dataset_name}_imputed_data.pickle')
-    
+
     return filtered_data
 
 
@@ -241,11 +224,8 @@ def construct_data(imputed_data: dict,
         'mortality_label': None
     }
 
-    GENDER_MAP = {
-        'M': 0,
-        'F': 1
-    }
-    
+    GENDER_MAP = {'M': 0, 'F': 1}
+
     ETHNICITY_MAP = {
         'AMERICAN INDIAN/ALASKA NATIVE': 1,
         'AMERICAN INDIAN/ALASKA NATIVE FEDERALLY RECOGNIZED TRIBE': 2,
@@ -290,13 +270,7 @@ def construct_data(imputed_data: dict,
         'PATIENT DECLINED TO ANSWER': 0
     }
 
-    FIRST_CAREUNIT_MAP = {
-        'CCU': 0,
-        'CSRU': 1,
-        'MICU': 2,
-        'SICU': 3,
-        'TSICU': 4
-    }
+    FIRST_CAREUNIT_MAP = {'CCU': 0, 'CSRU': 1, 'MICU': 2, 'SICU': 3, 'TSICU': 4}
 
     def get_max_time(time_series_length, window_size, window_increment):
         k = (time_series_length - window_size) // window_increment
@@ -308,11 +282,11 @@ def construct_data(imputed_data: dict,
         N = len(time_series)
         coeffs = np.fft.fft(time_series)
         freqs = np.fft.fftfreq(N, 1 / fs)
-        
+
         return freqs, coeffs
-    
+
     def discretize_los(value, max_value=10):
-        
+
         if value >= 7:
             label = 7
         elif value >= 6 and value < 7:
@@ -331,7 +305,7 @@ def construct_data(imputed_data: dict,
             label = 0
         else:
             raise ValueError('Invalid los value')
-        
+
         return label
 
     max_age = 0.
@@ -363,7 +337,7 @@ def construct_data(imputed_data: dict,
         los_label = discretize_los(demographic['los_icu'])
         this_patient['los_label'] = np.array([los_label], dtype=float)
         this_patient['mortality_label'] = np.array([demographic['mort_icu']], dtype=float)
-        
+
         subject_time_series = data['vitals_labs_mean']
 
         this_patient_max_hours = []
@@ -383,9 +357,10 @@ def construct_data(imputed_data: dict,
 
         for name, time_series in subject_time_series.items():
             time_series = time_series[:this_patient_max_hour]
-            windowed_time_series = np.lib.stride_tricks.sliding_window_view(time_series, window_size)[::window_increment]
+            windowed_time_series = np.lib.stride_tricks.sliding_window_view(time_series,
+                                                                            window_size)[::window_increment]
             assert windowed_time_series.ndim == 2
-        
+
             all_fourier_coeffs = []
             for ts in windowed_time_series:
                 freqs, coeffs = get_fourier_freqs_and_coeffs(ts)
@@ -393,9 +368,12 @@ def construct_data(imputed_data: dict,
 
             all_fourier_coeffs = np.stack(all_fourier_coeffs)
             assert not np.isnan(all_fourier_coeffs).any()
-            this_patient['vitals_labs_mean'][name] = {'windowed_data': windowed_time_series, 'fourier_coeffs': all_fourier_coeffs}
+            this_patient['vitals_labs_mean'][name] = {
+                'windowed_data': windowed_time_series,
+                'fourier_coeffs': all_fourier_coeffs
+            }
 
-        constructed_data[subject_id] = this_patient        
+        constructed_data[subject_id] = this_patient
 
     if save_data:
         save_with_pickle(constructed_data, processed_data_path, f'{dataset_name}_constructed_data.pickle')
@@ -408,7 +386,7 @@ def split_data(constructed_data: dict,
                processed_data_path: str,
                dataset_name: str,
                save_data: bool = False):
-    
+
     patient_num = len(constructed_data)
     patients_k = np.array(list(constructed_data.keys()))
 
@@ -426,13 +404,12 @@ def split_data(constructed_data: dict,
     test_patients = {key: constructed_data[key] for key in test_k}
 
     if save_data:
-        save_with_pickle(train_patients, processed_data_path,
-                            f'{dataset_name}_train_data.pickle')
+        save_with_pickle(train_patients, processed_data_path, f'{dataset_name}_train_data.pickle')
         save_with_pickle(val_patients, processed_data_path, f'{dataset_name}_val_data.pickle')
-        save_with_pickle(test_patients, processed_data_path,
-                            f'{dataset_name}_test_data.pickle')
-    
+        save_with_pickle(test_patients, processed_data_path, f'{dataset_name}_test_data.pickle')
+
     return {'train': train_patients, 'val': val_patients, 'test': test_patients}
+
 
 def run(args):
     init_logger()
@@ -441,12 +418,12 @@ def run(args):
     processed_data_path = osp.join(args.processed_data_path, args.dataset)
 
     raw_data = load_data(dataset_max_hours=args.dataset_max_hours,
-              raw_data_path=args.raw_data_path,
-              processed_data_path=processed_data_path,
-              dataset_name=args.dataset,
-              save_data=False)
+                         raw_data_path=args.raw_data_path,
+                         processed_data_path=processed_data_path,
+                         dataset_name=args.dataset,
+                         save_data=False)
     logger.info('Raw data loaded')
-    
+
     filtered_data = filter_data(raw_data=raw_data,
                                 age_threshold_low=args.age_threshold_low,
                                 age_threshold_high=args.age_threshold_high,
@@ -485,6 +462,7 @@ def run(args):
     logger.info(f'# of val patients: {len(splitted_data["val"])}')
     logger.info(f'# of test patients: {len(splitted_data["test"])}')
     logger.info('Splitted data')
+
 
 if __name__ == '__main__':
     args = get_args()
