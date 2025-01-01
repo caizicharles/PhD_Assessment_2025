@@ -1,9 +1,9 @@
 import os
 
-config_files = ['base_mortality', 'base_los']
-lr_vals = [0.0001]#, 0.0005, 0.001]
-fuse_dims = [32]#, 64]
-k_vals = [4]#[2, 4, 8]
+config_files = ['base_mortality']  #, 'base_los']
+lr_vals = [0.0001, 0.0005, 0.001]
+fuse_dims = [32, 64]
+k_vals = [2, 4, 8]
 
 for file in config_files:
     for dim in fuse_dims:

@@ -62,4 +62,4 @@ test_metrics:
     args: None
 
 processed_data_path: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/data/processed
-log_data_apth: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/logs
+log_data_path: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/logs

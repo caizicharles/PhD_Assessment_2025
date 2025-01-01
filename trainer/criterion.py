@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -26,6 +27,7 @@ class cross_entropy(nn.Module):
 
     def forward(self, inputs, targets):
         targets = targets.squeeze(-1)
+        targets = targets.to(torch.long)
         return F.cross_entropy(inputs, targets, reduction=self.reduction)
 
 

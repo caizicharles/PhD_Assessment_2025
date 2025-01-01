@@ -285,23 +285,21 @@ def construct_data(imputed_data: dict,
 
         return freqs, coeffs
 
-    def discretize_los(value, max_value=10):
+    def discretize_los(value):
 
         if value >= 7:
-            label = 7
-        elif value >= 6 and value < 7:
             label = 6
-        elif value >= 5 and value < 6:
+        elif value >= 6 and value < 7:
             label = 5
-        elif value >= 4 and value < 5:
+        elif value >= 5 and value < 6:
             label = 4
-        elif value >= 3 and value < 4:
+        elif value >= 4 and value < 5:
             label = 3
-        elif value >= 2 and value < 3:
+        elif value >= 3 and value < 4:
             label = 2
-        elif value >= 1 and value < 2:
+        elif value >= 2 and value < 3:
             label = 1
-        elif value > 0 and value < 1:
+        elif value < 2:
             label = 0
         else:
             raise ValueError('Invalid los value')

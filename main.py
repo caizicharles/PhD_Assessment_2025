@@ -55,7 +55,7 @@ def get_out_dim(task: str):
         return 1
 
     elif task == 'los_prediction':
-        return 8
+        return 7
 
 
 def main(args):
@@ -120,7 +120,7 @@ def main(args):
     logger.info('Optimizer and Scheduler ready')
 
     experiment_name = f'Experiments_{args.model["name"]}'
-    mlflow_path = osp.join(args.log_path, 'mlflow')
+    mlflow_path = osp.join(args.log_data_path, 'mlflow')
     mlflow.set_tracking_uri(mlflow_path)
     client = MlflowClient()
     try:
@@ -237,8 +237,9 @@ def main(args):
             mlflow.log_params(bootstrap_test_result_stats)
 
             if args.save_test:
-                bootstrap_results_path = osp.join(args.log_path, 'bootstrap_results', args.dataset, args.task,
+                bootstrap_results_path = osp.join(args.log_data_path, 'bootstrap_results', args.dataset, args.task,
                                                   args.model['name'])
+
                 save_with_pickle(
                     bootstrap_test_results, bootstrap_results_path,
                     f'{args.dataset}_{args.task}_{args.model["name"]}_bootstrap_results_{args.start_time}.pickle')

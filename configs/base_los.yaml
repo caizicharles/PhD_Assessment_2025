@@ -7,10 +7,10 @@ save_params: False
 train_batch_size: 128
 val_batch_size: 128
 test_batch_size: 128
-max_epoch: 300
+max_epoch: 1 #300
 early_stopping_threshold: 20
 early_stopping_indicator: AUROC
-bootstrap_num: 100
+bootstrap_num: 1
 logging_freq: 50
 val_freq: 1
 
@@ -62,4 +62,4 @@ test_metrics:
     args: None
 
 processed_data_path: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/data/processed
-log_data_apth: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/logs
+log_data_path: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/logs

@@ -13,7 +13,7 @@ def get_args():
     parser.add_argument('--save_params', type=bool, default=False)
 
     parser.add_argument('--processed_data_path', type=str, default='')
-    parser.add_argument('--log_path', type=str, default='')
+    parser.add_argument('--log_data_path', type=str, default='')
 
     optimizer_hyp_search_args = {
         'lr': 0.0001,
