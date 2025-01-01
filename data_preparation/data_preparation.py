@@ -23,7 +23,7 @@ def seed_everything(seed: int):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-    torch.use_deterministic_algorithms(True)
+    # torch.use_deterministic_algorithms(True)
 
 
 def load_data(dataset_max_hours: int,
@@ -288,18 +288,16 @@ def construct_data(imputed_data: dict,
     def discretize_los(value):
 
         if value >= 7:
-            label = 6
-        elif value >= 6 and value < 7:
             label = 5
-        elif value >= 5 and value < 6:
+        elif value >= 6 and value < 7:
             label = 4
-        elif value >= 4 and value < 5:
+        elif value >= 5 and value < 6:
             label = 3
-        elif value >= 3 and value < 4:
+        elif value >= 4 and value < 5:
             label = 2
-        elif value >= 2 and value < 3:
+        elif value >= 3 and value < 4:
             label = 1
-        elif value < 2:
+        elif value < 3:
             label = 0
         else:
             raise ValueError('Invalid los value')
