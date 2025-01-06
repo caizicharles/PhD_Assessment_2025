@@ -25,13 +25,14 @@ class MIMICBaseDataset(data.Dataset):
 
         for patient_data in data.values():
             label = patient_data[label_key]
+            subject_id = patient_data['subject_id']
             x_static = patient_data['demographic']
             x_interv = patient_data['interventions']
             x_coeffs = [data['fourier_coeffs'] for data in patient_data['vitals_labs_mean'].values()]
             x_coeffs = np.array(x_coeffs)
-
-            sample_data = {}
+            
             for idx in range(x_coeffs.shape[1]):
+                sample_data = {}
                 sample_x_coeffs = x_coeffs[:, idx]
                 sample_x_interv = x_interv[:, idx]
 
@@ -39,6 +40,8 @@ class MIMICBaseDataset(data.Dataset):
                 sample_data['dynamic'] = sample_x_interv.astype(np.float32)
                 sample_data['fourier_coeffs'] = sample_x_coeffs.astype(np.complex64)
                 sample_data['label'] = label.astype(np.float32)
+                sample_data['subject_id'] = subject_id
+                sample_data['order_id'] = idx
 
                 dataset.append(sample_data)
 
