@@ -1,5 +1,6 @@
 import argparse
 import yaml
+import ast
 from .misc import get_time_str
 
 
@@ -11,9 +12,33 @@ def get_args():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--save_test', type=bool, default=False)
     parser.add_argument('--save_params', type=bool, default=False)
-
     parser.add_argument('--processed_data_path', type=str, default='')
     parser.add_argument('--log_data_path', type=str, default='')
+    parser.add_argument('--checkpoint', type=str, default='')
+
+    model_hyp_search_args = {
+        # Base
+        'scoring_hidden_dim': 64,
+        'k_coeffs': 4,
+        'static_hidden_sizes': [32, 64],
+        'fuse_dim': 32,
+        'dynamic_layers': 1,
+        'predictor_hidden_sizes': [32],
+        'activation': 'relu',
+        'dropout': 0.1,
+        'softmax_temp': 5.,
+        # GRU
+        'hidden_dim': 32,
+        'layer_num': 1,
+        # Transformer
+        'ff_dim': 512,
+        'head_num': 1,
+        'encoder_depth': 1,
+        # RETAIN
+        # StageNet
+        'conv_size': 4,
+        'levels': 1,
+    }
 
     optimizer_hyp_search_args = {
         'lr': 0.0001,
@@ -22,26 +47,16 @@ def get_args():
 
     scheduler_hyp_search_args = {'gamma': 0.995}
 
-    model_hyp_search_args = {
-        'scoring_hidden_dim': 64,
-        'k_coeffs': 4,
-        'static_hidden_sizes': [32, 64],
-        'fuse_dim': 64,
-        'dynamic_hidden_dim': 64,
-        'dynamic_layers': 3,
-        'predictor_hidden_sizes': [32, 16],
-        'activation': 'relu',
-        'dropout': 0.1,
-        'softmax_temp': 1.
-    }
-
     for hyp, default_val in optimizer_hyp_search_args.items():
         parser.add_argument(f'--{hyp}', type=type(default_val), default=default_val)
     for hyp, default_val in scheduler_hyp_search_args.items():
         parser.add_argument(f'--{hyp}', type=type(default_val), default=default_val)
     for hyp, default_val in model_hyp_search_args.items():
-        parser.add_argument(f'--{hyp}', type=type(default_val), default=default_val)
-
+        if isinstance(default_val, list):
+            parser.add_argument(f'--{hyp}', type=type(default_val[0]), default=default_val, nargs='+')
+        else:
+            parser.add_argument(f'--{hyp}', type=type(default_val), default=default_val)
+        
     # Config File
     config_parser = argparse.ArgumentParser(description='Algorithm Config', add_help=False)
     config_parser.add_argument('-c', '--config', default=None, type=str, help='YAML config file')
@@ -55,7 +70,7 @@ def get_args():
 
     args = parser.parse_args(remaining)
 
-    if args.task != 'data_preparation':
+    if args.task != 'data_preparation' and args.checkpoint == '':
         for hyp in optimizer_hyp_search_args.keys():
             value = getattr(args, hyp, None)
             if value is not None:

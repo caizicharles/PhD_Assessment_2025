@@ -28,9 +28,6 @@ class AUROC(MetricBase):
             return roc_auc_score(target, probability)
 
         elif self.task == 'los_prediction':
-            present_classes = np.unique(target).astype(int)
-            probability = probability[:, present_classes]
-            print(np.unique(target), target.shape, probability.shape)
             return roc_auc_score(target, probability, multi_class="ovr", average="macro")
 
     def log(self, score, logger):
@@ -120,7 +117,7 @@ class F1(MetricBase):
         elif self.task == 'los_prediction':
             pred = np.argmax(probability, axis=-1)
             target = np.squeeze(target, axis=-1)
-            return accuracy_score(target, pred)
+            return f1_score(target, pred, average='macro')
 
     def log(self, score, logger):
         logger.info(f'{self.NAME}: {score:.4f}')

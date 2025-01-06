@@ -26,7 +26,7 @@ def save_params(model, args, epoch_idx=None, iter_idx=None, optimizer=None, sche
             'optimizer': optimizer.state_dict() if optimizer is not None else None,
             'scheduler': scheduler.state_dict() if scheduler is not None else None
         },
-        f'{args.log_data_path}/checkpoints/{args.dataset}/{args.task}/{args.model["name"]}_s{args.seed}_{args.start_time}.pth'
+        f'{args.log_data_path}/checkpoints/{args.dataset}/{args.task}/{args.model["name"]}/{args.model["name"]}_s{args.seed}_{args.start_time}.pth'
     )
 
 
