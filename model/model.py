@@ -169,7 +169,7 @@ class StageNet(nn.Module):
         return {'logits': out, 'reconstructed_vitals': None}
 
 
-class ItHealth(nn.Module):
+class HIP(nn.Module):
 
     def __init__(self, configs):
         super().__init__()
@@ -239,4 +239,4 @@ class ItHealth(nn.Module):
         return {'logits': out, 'reconstructed_vitals': x_vitals}
 
 
-MODELS = {'ItHealth': ItHealth, 'GRU': GRU, 'Transformer': Transformer, 'RETAIN': RETAIN, 'StageNet': StageNet}
+MODELS = {'HIP': HIP, 'GRU': GRU, 'Transformer': Transformer, 'RETAIN': RETAIN, 'StageNet': StageNet}

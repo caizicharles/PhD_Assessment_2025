@@ -21,7 +21,7 @@ window_size: 48
 window_increment: 12
 
 model:
-  name: ItHealth
+  name: HIP
   mode: train
   args:
 scoring_hidden_dim: 64
