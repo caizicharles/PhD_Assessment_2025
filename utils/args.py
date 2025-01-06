@@ -12,6 +12,7 @@ def get_args():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--save_test', type=bool, default=False)
     parser.add_argument('--save_params', type=bool, default=False)
+    parser.add_argument('--raw_data_path', type=str, default='')
     parser.add_argument('--processed_data_path', type=str, default='')
     parser.add_argument('--log_data_path', type=str, default='')
     parser.add_argument('--checkpoint', type=str, default='')
