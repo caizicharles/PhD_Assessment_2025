@@ -19,29 +19,26 @@ python create_project_structure.py --working_dir {PATH_TO_REPO}/PhD_Assessment_2
 Subsequently, move "all_hourly_data.h5" under "{PATH_TO_REPO}/PhD_Assessment_2025/data/raw/mimiciii".
 
 ## Step 4: Run Data preparation
-Before running the following commands, modify these 2 arguments in "configs/data_preparation.yaml":<br>
-raw_data_path:  {PATH_TO_REPO}/PhD_Assessment_2025/data/raw<br>
-processed_data_path:  {PATH_TO_REPO}/PhD_Assessment_2025/data/processed<br>
-
 ```bash
-python -m data_preparation.data_preparation -c {PATH_TO_REPO}/PhD_Assessment_2025/configs/data_preparation.yaml
+python -m data_preparation.data_preparation -c {PATH_TO_REPO}/PhD_Assessment_2025/configs/data_preparation.yaml --raw_data_path {PATH_TO_REPO}/PhD_Assessment_2025/data/raw --processed_data_path {PATH_TO_REPO}/PhD_Assessment_2025/data/processed
 ```
 
 ## Run Models
 HIP:<br>
 ```bash
-python main.py -c {PATH_TO_REPO}/PhD_Assessment_2025/configs/base_mortality.yaml
-python main.py -c {PATH_TO_REPO}/PhD_Assessment_2025/configs/base_los.yaml
+python main.py -c {PATH_TO_REPO}/PhD_Assessment_2025/configs/base_mortality.yaml --processed_data_path {PATH_TO_REPO}/PhD_Assessment_2025/data/processed --log_data_path --processed_data_path {PATH_TO_REPO}/PhD_Assessment_2025/logs
+python main.py -c {PATH_TO_REPO}/PhD_Assessment_2025/configs/base_los.yaml --processed_data_path {PATH_TO_REPO}/PhD_Assessment_2025/data/processed --log_data_path --processed_data_path {PATH_TO_REPO}/PhD_Assessment_2025/logs
 ```
 
 Baselines:<br>
 Choose baseline name from [gru, transformer, retain, stagenet].
 ```bash
-python main.py -c {PATH_TO_REPO}/PhD_Assessment_2025/configs/{BASELINE_NAME}_mortality.yaml
-python main.py -c {PATH_TO_REPO}/PhD_Assessment_2025/configs/BASELINE_NAME}_los.yaml
+python main.py -c {PATH_TO_REPO}/PhD_Assessment_2025/configs/{BASELINE_NAME}_mortality.yaml --processed_data_path {PATH_TO_REPO}/PhD_Assessment_2025/data/processed --log_data_path --processed_data_path {PATH_TO_REPO}/PhD_Assessment_2025/logs
+python main.py -c {PATH_TO_REPO}/PhD_Assessment_2025/configs/BASELINE_NAME}_los.yaml --processed_data_path {PATH_TO_REPO}/PhD_Assessment_2025/data/processed --log_data_path --processed_data_path {PATH_TO_REPO}/PhD_Assessment_2025/logs
 ```
 
 ## Hyperparameter Search
+Before running the script, modify the path to main file and the path to config file in the script.
 HIP:<br>
 ```bash
 python hyp_search_base.py
