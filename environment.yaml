@@ -1,4 +1,4 @@
-name: MedTIME
+name: HIP
 channels:
   - defaults
 dependencies:
@@ -10,7 +10,9 @@ dependencies:
   - matplotlib
   - scikit-learn
   - pytorch
+  - pytorch-cuda
   - pip:
+      - pyhealth
       - PyYAML
       - tqdm
       - mlflow
