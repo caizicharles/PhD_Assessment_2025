@@ -51,3 +51,8 @@ Baselines:<br>
 ```bash
 python hyp_search_{BASELINE_NAME}.py
 ```
+
+## Visualization
+```bash
+python -m visualization.visualize --checkpoint {PATH_TO_REPO}/PhD_Assessment_2025/logs/checkpoints/mimiciii/mortality_prediction/HIP/{CHECKPOINT_NAME}
+```
