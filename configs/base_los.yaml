@@ -2,15 +2,15 @@ dataset: mimiciii
 task: los_prediction
 seed: 0
 save_test: True
-save_params: False
+save_params: True
 
 train_batch_size: 128
 val_batch_size: 128
 test_batch_size: 128
-max_epoch: 1 #300
+max_epoch: 300
 early_stopping_threshold: 20
 early_stopping_indicator: AUROC
-bootstrap_num: 1
+bootstrap_num: 100
 logging_freq: 50
 val_freq: 1
 
@@ -18,17 +18,18 @@ static_feats_num: 49
 intervention_feats_num: 14
 vital_feats_num: 3
 window_size: 48
+window_increment: 12
 
 model:
   name: ItHealth
   mode: train
   args:
 scoring_hidden_dim: 64
-k_coeffs: 4
-static_hidden_sizes: [32, 64]
-dynamic_layers: 3
+k_coeffs: 8
+static_hidden_sizes: [64, 64]
+dynamic_layers: 1
 fuse_dim: 32
-predictor_hidden_sizes: [32, 16]
+predictor_hidden_sizes: [32, 32]
 activation: relu
 dropout: 0.1
 softmax_temp: 0.5
@@ -36,7 +37,7 @@ softmax_temp: 0.5
 optimizer:
   name: Adam
   args:
-lr: 0.0005
+lr: 0.001
 
 scheduler:
   name: ExpLR
@@ -61,5 +62,5 @@ test_metrics:
   Accuracy:
     args: None
 
-processed_data_path: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/data/processed
-log_data_path: /Users/caizicharles/Documents/GitHub/PhD_Assessment_2025/logs
+processed_data_path: C:\Users\ZC\Documents\GitHub\PhD_Assessment_2025\data\processed
+log_data_path: C:\Users\ZC\Documents\GitHub\PhD_Assessment_2025\logs

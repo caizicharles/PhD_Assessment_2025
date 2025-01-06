@@ -21,18 +21,13 @@ window_size: 48
 window_increment: 12
 
 model:
-  name: ItHealth
+  name: StageNet
   mode: train
   args:
-scoring_hidden_dim: 64
-k_coeffs: 8
-static_hidden_sizes: [32, 32]
-dynamic_layers: 2
-fuse_dim: 32
-predictor_hidden_sizes: [32, 32]
-activation: tanh
+hidden_dim: 32
+conv_size: 4
+levels: 1
 dropout: 0.1
-softmax_temp: 1.0
 
 optimizer:
   name: Adam

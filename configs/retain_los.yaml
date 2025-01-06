@@ -1,5 +1,5 @@
 dataset: mimiciii
-task: mortality_prediction
+task: los_prediction
 seed: 0
 save_test: True
 save_params: True
@@ -9,7 +9,7 @@ val_batch_size: 128
 test_batch_size: 128
 max_epoch: 300
 early_stopping_threshold: 20
-early_stopping_indicator: AUPRC
+early_stopping_indicator: AUROC
 bootstrap_num: 100
 logging_freq: 50
 val_freq: 1
@@ -21,18 +21,11 @@ window_size: 48
 window_increment: 12
 
 model:
-  name: ItHealth
+  name: RETAIN
   mode: train
   args:
-scoring_hidden_dim: 64
-k_coeffs: 8
-static_hidden_sizes: [32, 32]
-dynamic_layers: 2
-fuse_dim: 32
-predictor_hidden_sizes: [32, 32]
-activation: tanh
+hidden_dim: 32
 dropout: 0.1
-softmax_temp: 1.0
 
 optimizer:
   name: Adam
@@ -45,17 +38,17 @@ scheduler:
 gamma: 0.995
 
 criterion:
-  binary_entropy:
+  cross_entropy:
     reduction: mean
 
 val_metrics:
-  AUPRC:
+  AUROC:
     args: None
 
 test_metrics:
   AUROC:
     args: None
-  AUPRC:
+  Kappa:
     args: None
   F1:
     args: None
