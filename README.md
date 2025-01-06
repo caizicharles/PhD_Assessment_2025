@@ -6,6 +6,7 @@ Our data preprocessing pipeline is constructed based on processed data by [MIMIC
 ## Step 2: Setup Environment
 ```bash
 conda env create -f environment.yaml
+conda activate HIP
 ```
 
 ## Step 3: Create Project Structure
