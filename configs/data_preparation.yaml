@@ -16,5 +16,5 @@ interpolate_method: cubic
 window_size: 48
 window_increment: 12
 
-raw_data_path: C:\Users\ZC\Documents\GitHub\PhD_Assessment_2025\data\raw
-processed_data_path: C:\Users\ZC\Documents\GitHub\PhD_Assessment_2025\data\processed
+raw_data_path:
+processed_data_path:
