@@ -33,7 +33,7 @@ def seed_everything(seed: int):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-    torch.use_deterministic_algorithms(True)
+    # torch.use_deterministic_algorithms(True)
 
 
 def load_all(processed_data_path: str, dataset_name: str):
@@ -55,7 +55,7 @@ def get_out_dim(task: str):
         return 1
 
     elif task == 'los_prediction':
-        return 7
+        return 6
 
 
 def main(args):
@@ -102,7 +102,6 @@ def main(args):
     start_epoch = 0
 
     model_configs = args.model['args'] | {
-        'device': device,
         'static_feats_num': args.static_feats_num,
         'intervention_feats_num': args.intervention_feats_num,
         'vital_feats_num': args.vital_feats_num,
@@ -119,8 +118,9 @@ def main(args):
         scheduler = SCHEDULERS[args.scheduler['name']](optimizer, **args.scheduler['args'])
     logger.info('Optimizer and Scheduler ready')
 
-    experiment_name = f'Experiments_{args.model["name"]}'
+    experiment_name = f'Experiments_{args.model["name"]}_{args.task}'
     mlflow_path = osp.join(args.log_data_path, 'mlflow')
+    mlflow_path = 'file:/' + mlflow_path
     mlflow.set_tracking_uri(mlflow_path)
     client = MlflowClient()
     try:
@@ -298,9 +298,7 @@ def single_train(model,
         optimizer.zero_grad()
 
         output = model(x_static=x_static, x_dynamic=x_dynamic, fourier_coeffs=fourier_coeffs)
-
         out = output['logits']
-        reconstructed_vitals = output['reconstructed_vitals']
 
         loss = 0.
         for criterion in criterions:
@@ -367,9 +365,7 @@ def single_validate(model, task, dataloader, epoch_idx, global_iter_idx, criteri
 
         with torch.no_grad():
             output = model(x_static=x_static, x_dynamic=x_dynamic, fourier_coeffs=fourier_coeffs)
-
             out = output['logits']
-            reconstructed_vitals = output['reconstructed_vitals']
 
             loss = 0.
             for criterion in criterions:
@@ -425,9 +421,7 @@ def single_test(model, task, dataloader, epoch_idx, global_iter_idx, criterions=
 
         with torch.no_grad():
             output = model(x_static=x_static, x_dynamic=x_dynamic, fourier_coeffs=fourier_coeffs)
-
             out = output['logits']
-            reconstructed_vitals = output['reconstructed_vitals']
 
             loss = 0.
             for criterion in criterions:
