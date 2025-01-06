@@ -33,7 +33,7 @@ def load_data(dataset_max_hours: int,
               save_data: bool = False):
 
     if dataset_name == 'mimiciii':
-        raw_data_path = osp.join(raw_data_path, 'all_hourly_data.h5')
+        raw_data_path = osp.join(raw_data_path, dataset_name, 'all_hourly_data.h5')
         patient_demographics = pd.read_hdf(raw_data_path, 'patients')
         vitals_labs_mean = pd.read_hdf(raw_data_path, 'vitals_labs_mean')
         interventions = pd.read_hdf(raw_data_path, 'interventions')
@@ -143,13 +143,14 @@ def filter_data(raw_data: dict,
         for time_series in subject_time_series.values():
             consec_nan = consecutive_nan_lengths(time_series)
             consec_nan = np.sort(consec_nan)
+
             if len(consec_nan) > 1:
                 max_intermit_nan.append(consec_nan[-2])
             else:
                 max_intermit_nan.append(0)
             valid_length.append(len(time_series) - consec_nan[-1])
 
-        if min(valid_length) > hours_threshold_high or min(valid_length) < hours_threshold_low:
+        if max(valid_length) > hours_threshold_high or min(valid_length) < hours_threshold_low:
             del filtered_data[subject_id]
             continue
 
@@ -365,6 +366,7 @@ def construct_data(imputed_data: dict,
             all_fourier_coeffs = np.stack(all_fourier_coeffs)
             assert not np.isnan(all_fourier_coeffs).any()
             this_patient['vitals_labs_mean'][name] = {
+                'original_data': time_series,
                 'windowed_data': windowed_time_series,
                 'fourier_coeffs': all_fourier_coeffs
             }
@@ -453,7 +455,7 @@ def run(args):
                                split_ratio=split_ratio,
                                processed_data_path=processed_data_path,
                                dataset_name=args.dataset,
-                               save_data=True)
+                               save_data=False)
     logger.info(f'# of train patients: {len(splitted_data["train"])}')
     logger.info(f'# of val patients: {len(splitted_data["val"])}')
     logger.info(f'# of test patients: {len(splitted_data["test"])}')
