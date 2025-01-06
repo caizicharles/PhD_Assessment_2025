@@ -58,5 +58,5 @@ test_metrics:
   Accuracy:
     args: None
 
-processed_data_path: C:\Users\ZC\Documents\GitHub\PhD_Assessment_2025\data\processed
-log_data_path: C:\Users\ZC\Documents\GitHub\PhD_Assessment_2025\logs
+processed_data_path:
+log_data_path:
